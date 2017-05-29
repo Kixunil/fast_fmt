@@ -13,7 +13,8 @@ categories = ["no-std", "rust-patterns", "value-formatting"]
 [features]
 default = ["with_std"]
 nightly = []
-with_std = []
+with_std = ["void/std"]
 
-[dependencies]
-void = "1"
+[dependencies.void]
+version = "1"
+default-features = false
