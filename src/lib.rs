@@ -4,7 +4,10 @@
 #[cfg(feature = "with_std")]
 extern crate std;
 
+extern crate numtoa;
 extern crate void;
+
+mod int_impls;
 
 #[cfg(feature = "with_std")]
 mod std_impls;
