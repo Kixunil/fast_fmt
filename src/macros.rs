@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! fast_fmt_instantiate {
     ($arg:expr) => {
         $crate::Instantiated::new($arg, &$crate::consts::DISPLAY)
@@ -10,6 +11,7 @@ macro_rules! fast_fmt_instantiate {
     };
 }
 
+#[macro_export]
 macro_rules! fwrite {
     ($writer:expr, $($args:expr),*) => {
         {
