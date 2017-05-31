@@ -15,6 +15,9 @@ default = ["with_std"]
 nightly = []
 with_std = ["void/std"]
 
+[dependencies]
+numtoa = "0.0.7"
+
 [dependencies.void]
 version = "1"
 default-features = false
