@@ -17,7 +17,9 @@ macro_rules! impls {
                     W: Write,
                 {
                     unsafe {
-                        let mut buffer: [u8; $N] = mem::uninitialized();
+                        // NOTE formatting negative integers requires one more
+                        // byte than necessary. See mmstick/numtoa#8.
+                        let mut buffer: [u8; $N + 1] = mem::uninitialized();
 
                         let start = self.numtoa(10, &mut buffer);
 
@@ -37,13 +39,11 @@ macro_rules! impls {
     }
 }
 
-// NOTE formatting negative integers requires one more byte than necessary.
-// See mmstick/numtoa#8.
 impls! {
-    (i8, 5),
-    (i16, 7),
-    (i32, 12),
-    (i64, 21),
+    (i8, 4),
+    (i16, 6),
+    (i32, 11),
+    (i64, 20),
     (u8, 3),
     (u16, 5),
     (u32, 10),
