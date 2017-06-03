@@ -183,10 +183,9 @@ impl<'a> Write for &'a mut [u8] {
         let buf = val.encode_utf8(&mut buf);
         let buf = buf.as_bytes();
         if buf.len() <= self.len() {
-            self[0..buf.len()].copy_from_slice(buf);
-            unsafe {
-                *self = ::core::slice::from_raw_parts_mut(self.as_mut_ptr().offset(buf.len() as isize), self.len() - buf.len());
-            }
+            let (first, second) = ::core::mem::replace(self, &mut []).split_at_mut(buf.len());
+            first.copy_from_slice(buf);
+            *self = second;
             Ok(())
         } else {
             Err(BufferOverflow)
