@@ -7,10 +7,16 @@ extern crate std;
 extern crate numtoa;
 extern crate void;
 
+#[cfg(feature = "genio")]
+extern crate genio;
+
 mod int_impls;
 
 #[cfg(feature = "with_std")]
 mod std_impls;
+
+#[cfg(feature = "genio")]
+pub mod encoding;
 
 #[macro_use]
 mod macros;

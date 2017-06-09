@@ -21,3 +21,8 @@ numtoa = "0.0.7"
 [dependencies.void]
 version = "1"
 default-features = false
+
+[dependencies.genio]
+optional = true
+default-features = false
+git = "https://github.com/Kixunil/genio"
