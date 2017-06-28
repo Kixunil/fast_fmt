@@ -16,6 +16,9 @@ mod std_impls;
 mod macros;
 
 pub mod consts;
+pub mod transform;
+
+use transform::{Transform, Transformer, Transformed};
 
 pub trait Write {
     type Error;
@@ -33,12 +36,40 @@ pub trait Write {
     fn uses_size_hint(&self) -> bool {
         false
     }
+
+    fn transform<T: Transform>(self, transformation: T) -> Transformer<T, Self> where Self: Sized {
+        Transformer::new(transformation, self)
+    }
+}
+
+impl<'a, W: Write> Write for &'a mut W {
+    type Error = W::Error;
+
+    fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
+        (*self).write_char(val)
+    }
+
+    fn write_str(&mut self, val: &str) -> Result<(), Self::Error> {
+        (*self).write_str(val)
+    }
+
+    fn size_hint(&mut self, bytes: usize) {
+        (*self).size_hint(bytes)
+    }
+
+    fn uses_size_hint(&self) -> bool {
+        (**self).uses_size_hint()
+    }
 }
 
 pub trait Fmt<S = Display> {
     fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error>;
 
     fn size_hint(&self, strategy: &S) -> usize;
+
+    fn transformed<T: Transform>(self, transformation: T) -> transform::Transformed<Self, T> where Self: Sized {
+        Transformed::new(self, transformation)
+    }
 }
 
 impl<'a, S, T: ?Sized + Fmt<S>> Fmt<S> for &'a T {
@@ -269,6 +300,47 @@ mod tests {
         }
         assert_eq!(&buf[0..TEST_STR.len()], TEST_STR.as_bytes());
         assert_eq!(&buf[TEST_STR.len()..(TEST_STR.len() * 2)], TEST_STR.as_bytes());
+    }
+
+    #[test]
+    fn transform() {
+        use ::transform::Transform;
+        use ::Write;
+
+        struct Upper;
+
+        impl Transform for Upper {
+            fn transform_char<W: Write>(&self, writer: &mut W, c: char) -> Result<(), W::Error> {
+                for c in c.to_uppercase() {
+                    writer.write_char(c)?;
+                }
+                Ok(())
+            }
+
+            fn transform_size_hint(&self, bytes: usize) -> usize {
+                bytes
+            }
+        }
+
+        {
+            let mut buf = [0u8; 42];
+            {
+                let buf = &mut buf;
+                let mut buf = buf.transform(Upper);
+
+                fwrite!(&mut buf, "Hello world!").unwrap();
+            }
+            assert_eq!(&buf[0..12], "HELLO WORLD!".as_bytes());
+        }
+
+        {
+            let mut buf = [0u8; 42];
+            {
+                let mut buf: &mut [u8] = &mut buf;
+                fwrite!(&mut buf, "Hello", " world!".transformed(Upper)).unwrap();
+            }
+            assert_eq!(&buf[0..12], "Hello WORLD!".as_bytes());
+        }
     }
 }
 
