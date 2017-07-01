@@ -1,8 +1,18 @@
+//! This module contains traits and types used for transforming text into other text.
+//!
+//! Possible use cases are: escaping, URL encoding...
+
 use Write;
 use Fmt;
 
+/// Represents a transformation of text to another text.
+///
+/// It abstracts transforming a single value and a whole input to the writer.
 pub trait Transform {
+    /// Writes transformed char into provided writer.
     fn transform_char<W: Write>(&self, writer: &mut W, c: char) -> Result<(), W::Error>;
+
+    /// Writes transformed string into provided writer.
     fn transform_str<W: Write>(&self, writer: &mut W, s: &str) -> Result<(), W::Error> {
         for c in s.chars() {
             self.transform_char(writer, c)?;
@@ -10,6 +20,10 @@ pub trait Transform {
         Ok(())
     }
 
+    /// Calculates new size hint based on how transformation affects output size.
+    ///
+    /// It should always be maximum of possible scenarios. If maximum can't be determined, the
+    /// `bytes` value should be returned unchanged.
     fn transform_size_hint(&self, bytes: usize) -> usize;
 }
 
@@ -27,12 +41,14 @@ impl<'a, T: Transform> Transform for &'a T {
     }
 }
 
+/// Transformation attached to a writer, transforming everything written into the writer.
 pub struct Transformer<T: Transform, W: Write> {
     transformation: T,
     writer: W,
 }
 
 impl<T: Transform, W: Write> Transformer<T, W> {
+    /// Attaches transformation to the writer.
     pub fn new(transformation: T, writer: W) -> Self {
         Transformer {
             transformation,
@@ -89,12 +105,14 @@ impl<'a, T: Transform, S, U: Fmt<S>> Fmt<TransformStrategy<'a, T, S>> for U {
 }
 */
 
+/// Transformation attached to a value, transforming given vale when formatting.
 pub struct Transformed<V, T: Transform> {
     value: V,
     transformation: T,
 }
 
 impl<V, T: Transform> Transformed<V, T> {
+    /// Attaches transformation to the value.
     pub fn new(value: V, transformation: T) -> Self {
         Transformed {
             value,

@@ -1,3 +1,13 @@
+//! This crate provides formatting similar to `core::fmt` but it's faster, more flexible and
+//! provides safer error handling.
+//!
+//! The core traits of this crate are `Write` and `Fmt<S>`. `S` represents a formatting strategy.
+//! There are multiple formatting strategies and users of this crate can define their own. This is
+//! similar to different traits in `core::fmt`, like `Display`, `Debug`...
+//! 
+//! A formatting strategy can also hold relevant configuration for given formatting. E.g. whether
+//! HEX dump should be uppercase or lowercase.
+
 #![no_std]
 #![cfg_attr(feature = "nightly", feature(test))]
 
@@ -20,11 +30,27 @@ pub mod transform;
 
 use transform::{Transform, Transformer, Transformed};
 
+/// Represents types to which characters may be written.
+///
+/// The difference between this trait and byte writers (such as `std::io::Write` or `genio::Write`)
+/// is that this guarantees valid UTF-8 encoding - it allows implementing this trait on `String`.
 pub trait Write {
+    /// Type of error returned if write fails.
     type Error;
 
+    /// Writes single char.
+    ///
+    /// If this operation fails the state of underlying writer is unspecified. Re-trying is
+    /// therefore impossible.
     fn write_char(&mut self, val: char) -> Result<(), Self::Error>;
 
+    /// Writes whole string.
+    ///
+    /// By default, this just iterates and writes all characters. The implementors are encouraged
+    /// to override this and provide faster implementation if possible.
+    ///
+    /// If this operation fails the state of underlying writer is unspecified. Re-trying is
+    /// therefore impossible.
     fn write_str(&mut self, val: &str) -> Result<(), Self::Error> {
         for c in val.chars() {
             self.write_char(c)?;
@@ -32,11 +58,23 @@ pub trait Write {
         Ok(())
     }
 
+    /// Hints that implementor should allocate enough space so that string containing `bytes` UTF-8
+    /// bytes can be stored in it.
+    ///
+    /// Warning: the number of bytes (chars) actually written might differ from this number! The
+    /// writer must NOT fail if it does!
     fn size_hint(&mut self, bytes: usize);
+
+    /// Tells the user whether the size hint is actually used. This allows the user to skip
+    /// calculation of the hint.
+    ///
+    /// By default this returns false but `size_hint` method is still mandatory to prevent people
+    /// implementing this trait from forgetting about the size hint.
     fn uses_size_hint(&self) -> bool {
         false
     }
 
+    /// Combinator for creating transformed writer.
     fn transform<T: Transform>(self, transformation: T) -> Transformer<T, Self> where Self: Sized {
         Transformer::new(transformation, self)
     }
@@ -62,11 +100,25 @@ impl<'a, W: Write> Write for &'a mut W {
     }
 }
 
+/// The formatting trait. Represents types that can be formated.
+///
+/// This trait is much like `core::fmt::Display`, `core::fmt::Debug` and other similar traits from
+/// `core::fmt`, but instead of many traits it is a single parametrized trait.
+///
+/// The `S` type parameter is formatting strategy and it defaults to `Display`.
 pub trait Fmt<S = Display> {
+    /// The implementor should write itself into `writer` inside this function.
     fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error>;
 
+    /// The implementor should estimate how many bytes would it's representation have in UTF-8 if
+    /// formated using specific strategy.
+    ///
+    /// If the implementor knows maximum possible size, it should return it.
+    /// If the implementor doesn't know maximum possible size, it should return minimum possible
+    /// size. (0 is always valid minimum)
     fn size_hint(&self, strategy: &S) -> usize;
 
+    /// Combinator for transforming the value,
     fn transformed<T: Transform>(self, transformation: T) -> transform::Transformed<Self, T> where Self: Sized {
         Transformed::new(self, transformation)
     }
@@ -95,6 +147,8 @@ impl<'a, S, T: Fmt<S>> Fmt<&'a S> for T {
 }
 */
 
+/// Pair of value and a strategy that implements `Fmt`. This allows combining many different
+/// strategies in single chain.
 pub struct Instantiated<'a, T, S: 'a> {
     value: T,
     strategy: &'a S,
@@ -123,6 +177,7 @@ impl<'a, S, T: Fmt<S>> Fmt for Instantiated<'a, T, S> {
     }
 }
 
+/// Two values chained together, so they can be concatenated.
 pub struct Chain<T0, T1> {
     val0: T0,
     val1: T1,
@@ -152,6 +207,9 @@ impl<S, T0: Fmt<S>, T1: Fmt<S>> Fmt<S> for Chain<T0, T1> {
     }
 }
 
+/// Empty type that never writes anything.
+///
+/// This is mostly a helper for macros.
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Empty;
 
@@ -171,9 +229,11 @@ impl<S> Fmt<S> for Empty {
     }
 }
 
+/// Represents strategy with same semantics as `core::fmt::Display`.
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Display;
 
+/// Represents strategy with same semantics as `core::fmt::Debug`.
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Debug;
 
@@ -197,6 +257,7 @@ impl Fmt<Display> for char {
     }
 }
 
+/// Error type indicating that buffer was too small.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct BufferOverflow;
 
