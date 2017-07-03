@@ -15,17 +15,17 @@ Why is this faster?
 
 * Lack of trait objects allows compiler to optimize better.
 * Use of `size_hint` allows writers to e.g. pre-allocate large enough buffer.
-* Use of never type for errors comming from `Write` allows to optimize-out error checks.
+* Use of never type for errors coming from `Write` allows to optimize-out error checks.
 
 Why more flexible?
 ------------------
 
-Instead of multiple traits like `Display`, `Debug`, ... this crate defines single `Fmt<S>` which allows you to implement multiple different strategies, even your own. One possible use case is to implement `Fmt<Localizer>` to enable localization of your application.
+Instead of multiple traits like `Display`, `Debug`, ... this crate defines a single `Fmt<S>` which allows you to implement multiple different strategies, even your own. One possible use case is to implement `Fmt<Localizer>` to enable localization of your application.
 
 Why more correct?
 -----------------
 
-Instead of returning `Err(())` on failed writes it returns apropriate types. It can even be `Void` to represent writers that can never fail (e.g. `std::string::String`).
+Instead of returning `Err(())` on failed writes it returns appropriate types. It can even be `Void` to represent writers that can never fail (e.g. `std::string::String`).
 
 How fast is it in practice?
 ---------------------------
@@ -51,10 +51,10 @@ Roughly sorted by priority.
 - [ ] Bridge with `core::fmt`
 - [ ] Bridge with `T: Iterator<char> + Clone`?
 - [ ] Integrate with `genio` and provide encoders for different encodings.
-- [ ] Support for trait objects if someone want's them
+- [ ] Support for trait objects if someone wants them
 - [ ] Transformers (e.g. char escaping)
 - [ ] Asynchronous formatting maybe?
-- [ ] PR aginst `core`
+- [ ] PR against `core`
 - [ ] Deprecate `core::fmt`
 
 Last two are jokes.
