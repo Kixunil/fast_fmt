@@ -4,7 +4,7 @@ macro_rules! fast_fmt_instantiate {
         $crate::Instantiated::new($arg, &$crate::consts::DISPLAY)
     };
     ($arg:expr=>?) => {
-        $crate::Instantiated::new($arg &$crate::consts::DEBUG)
+        $crate::Instantiated::new($arg, &$crate::consts::DEBUG)
     };
     ($arg:expr=>{$strategy:expr}) => {
         $crate::Instantiated::new($arg, $strategy)
