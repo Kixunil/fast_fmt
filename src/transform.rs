@@ -121,13 +121,13 @@ impl<V, T: Transform> Transformed<V, T> {
     }
 }
 
-impl<S, V: Fmt<S>, T: Transform> Fmt<S> for Transformed<V, T> {
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error> {
+impl<S: Copy, V: Fmt<S>, T: Transform> Fmt<S> for Transformed<V, T> {
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: S) -> Result<(), W::Error> {
         let mut writer = Transformer::new(&self.transformation, writer);
         self.value.fmt(&mut writer, strategy)
     }
 
-    fn size_hint(&self, strategy: &S) -> usize {
+    fn size_hint(&self, strategy: S) -> usize {
         self.transformation.transform_size_hint(self.value.size_hint(strategy))
     }
 }
