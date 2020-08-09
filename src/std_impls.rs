@@ -2,11 +2,11 @@ use ::*;
 use ::void::Void;
 
 impl Fmt for ::std::string::String {
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &Display) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: Display) -> Result<(), W::Error> {
         (**self).fmt(writer, strategy)
     }
 
-    fn size_hint(&self, _: &Display) -> usize {
+    fn size_hint(&self, _: Display) -> usize {
         self.len()
     }
 }

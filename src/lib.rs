@@ -25,7 +25,6 @@ mod std_impls;
 #[macro_use]
 mod macros;
 
-pub mod consts;
 pub mod transform;
 
 use transform::{Transform, Transformer, Transformed};
@@ -108,7 +107,7 @@ impl<'a, W: Write> Write for &'a mut W {
 /// The `S` type parameter is formatting strategy and it defaults to `Display`.
 pub trait Fmt<S = Display> {
     /// The implementor should write itself into `writer` inside this function.
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error>;
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: S) -> Result<(), W::Error>;
 
     /// The implementor should estimate how many bytes would it's representation have in UTF-8 if
     /// formated using specific strategy.
@@ -116,7 +115,7 @@ pub trait Fmt<S = Display> {
     /// If the implementor knows maximum possible size, it should return it.
     /// If the implementor doesn't know maximum possible size, it should return minimum possible
     /// size. (0 is always valid minimum)
-    fn size_hint(&self, strategy: &S) -> usize;
+    fn size_hint(&self, strategy: S) -> usize;
 
     /// Combinator for transforming the value,
     fn transformed<T: Transform>(self, transformation: T) -> transform::Transformed<Self, T> where Self: Sized {
@@ -125,11 +124,11 @@ pub trait Fmt<S = Display> {
 }
 
 impl<'a, S, T: ?Sized + Fmt<S>> Fmt<S> for &'a T {
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: S) -> Result<(), W::Error> {
         (*self).fmt(writer, strategy)
     }
 
-    fn size_hint(&self, strategy: &S) -> usize {
+    fn size_hint(&self, strategy: S) -> usize {
         (*self).size_hint(strategy)
     }
 }
@@ -137,11 +136,11 @@ impl<'a, S, T: ?Sized + Fmt<S>> Fmt<S> for &'a T {
 /*
  * Any way to achieve this without conflict?
 impl<'a, S, T: Fmt<S>> Fmt<&'a S> for T {
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: S) -> Result<(), W::Error> {
         <Self as Fmt<S>>::fmt(self, writer, *strategy)
     }
 
-    fn size_hint(&self, strategy: &S) -> usize {
+    fn size_hint(&self, strategy: S) -> usize {
         <Self as Fmt<S>>::size_hint(self, *strategy)
     }
 }
@@ -149,13 +148,13 @@ impl<'a, S, T: Fmt<S>> Fmt<&'a S> for T {
 
 /// Pair of value and a strategy that implements `Fmt`. This allows combining many different
 /// strategies in single chain.
-pub struct Instantiated<'a, T, S: 'a> {
+pub struct Instantiated<T, S: Copy> {
     value: T,
-    strategy: &'a S,
+    strategy: S,
 }
 
-impl<'a, S, T: Fmt<S>> Instantiated<'a, T, S> {
-    pub fn new(value: T, strategy: &'a S) -> Self {
+impl<S: Copy, T: Fmt<S>> Instantiated<T, S> {
+    pub fn new(value: T, strategy: S) -> Self {
         Instantiated {
             value,
             strategy,
@@ -167,12 +166,12 @@ impl<'a, S, T: Fmt<S>> Instantiated<'a, T, S> {
     }
 }
 
-impl<'a, S, T: Fmt<S>> Fmt for Instantiated<'a, T, S> {
-    fn fmt<W: Write>(&self, writer: &mut W, _strategy: &Display) -> Result<(), W::Error> {
+impl<S: Copy, T: Fmt<S>> Fmt for Instantiated<T, S> {
+    fn fmt<W: Write>(&self, writer: &mut W, _strategy: Display) -> Result<(), W::Error> {
         self.value.fmt(writer, self.strategy)
     }
 
-    fn size_hint(&self, _strategy: &Display) -> usize {
+    fn size_hint(&self, _strategy: Display) -> usize {
         self.value.size_hint(self.strategy)
     }
 }
@@ -196,13 +195,13 @@ impl<T0: Fmt, T1: Fmt> Chain<T0, T1> {
     }
 }
 
-impl<S, T0: Fmt<S>, T1: Fmt<S>> Fmt<S> for Chain<T0, T1> {
-    fn fmt<W: Write>(&self, writer: &mut W, strategy: &S) -> Result<(), W::Error> {
+impl<S: Copy, T0: Fmt<S>, T1: Fmt<S>> Fmt<S> for Chain<T0, T1> {
+    fn fmt<W: Write>(&self, writer: &mut W, strategy: S) -> Result<(), W::Error> {
         self.val0.fmt(writer, strategy)?;
         self.val1.fmt(writer, strategy)
     }
 
-    fn size_hint(&self, strategy: &S) -> usize {
+    fn size_hint(&self, strategy: S) -> usize {
         self.val0.size_hint(strategy) + self.val1.size_hint(strategy)
     }
 }
@@ -220,11 +219,11 @@ impl Empty {
 }
 
 impl<S> Fmt<S> for Empty {
-    fn fmt<W: Write>(&self, _writer: &mut W, _strategy: &S) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, _writer: &mut W, _strategy: S) -> Result<(), W::Error> {
         Ok(())
     }
 
-    fn size_hint(&self, _strategy: &S) -> usize {
+    fn size_hint(&self, _strategy: S) -> usize {
         0
     }
 }
@@ -238,21 +237,21 @@ pub struct Display;
 pub struct Debug;
 
 impl Fmt<Display> for str {
-    fn fmt<W: Write>(&self, writer: &mut W, _strategy: &Display) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, writer: &mut W, _strategy: Display) -> Result<(), W::Error> {
         writer.write_str(self)
     }
 
-    fn size_hint(&self, _strategy: &Display) -> usize {
+    fn size_hint(&self, _strategy: Display) -> usize {
         self.len()
     }
 }
 
 impl Fmt<Display> for char {
-    fn fmt<W: Write>(&self, writer: &mut W, _strategy: &Display) -> Result<(), W::Error> {
+    fn fmt<W: Write>(&self, writer: &mut W, _strategy: Display) -> Result<(), W::Error> {
         writer.write_char(*self)
     }
 
-    fn size_hint(&self, _strategy: &Display) -> usize {
+    fn size_hint(&self, _strategy: Display) -> usize {
         self.len_utf8()
     }
 }
@@ -324,7 +323,7 @@ mod tests {
         let mut buf = [0u8; 42];
         {
             let mut buf: &mut [u8] = &mut buf;
-            TEST_STR.fmt(&mut buf, &Display).unwrap();
+            TEST_STR.fmt(&mut buf, Display).unwrap();
         }
         assert_eq!(&buf[0..TEST_STR.len()], TEST_STR.as_bytes());
     }
@@ -338,9 +337,8 @@ mod tests {
         let mut buf = [0u8; 42];
         {
             let mut buf: &mut [u8] = &mut buf;
-            let display = Display;
-            let inst = Instantiated::new(TEST_STR, &display);
-            inst.fmt(&mut buf, &Display).unwrap();
+            let inst = Instantiated::new(TEST_STR, Display);
+            inst.fmt(&mut buf, Display).unwrap();
         }
         assert_eq!(&buf[0..TEST_STR.len()], TEST_STR.as_bytes());
     }
@@ -354,10 +352,9 @@ mod tests {
         let mut buf = [0u8; 42];
         {
             let mut buf: &mut [u8] = &mut buf;
-            let display = Display;
-            let inst = Instantiated::new(TEST_STR, &display);
+            let inst = Instantiated::new(TEST_STR, Display);
             let chain = inst.chain(TEST_STR);
-            chain.fmt(&mut buf, &Display).unwrap();
+            chain.fmt(&mut buf, Display).unwrap();
         }
         assert_eq!(&buf[0..TEST_STR.len()], TEST_STR.as_bytes());
         assert_eq!(&buf[TEST_STR.len()..(TEST_STR.len() * 2)], TEST_STR.as_bytes());

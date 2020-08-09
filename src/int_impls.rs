@@ -11,7 +11,7 @@ macro_rules! impls {
                 fn fmt<W>(
                     &self,
                     writer: &mut W,
-                    _strategy: &Display,
+                    _strategy: Display,
                 ) -> Result<(), W::Error>
                 where
                     W: Write,
@@ -31,7 +31,7 @@ macro_rules! impls {
                     }
                 }
 
-                fn size_hint(&self, _strategy: &Display) -> usize {
+                fn size_hint(&self, _strategy: Display) -> usize {
                     $N
                 }
             }

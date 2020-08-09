@@ -1,10 +1,10 @@
 #[macro_export]
 macro_rules! fast_fmt_instantiate {
     ($arg:expr) => {
-        $crate::Instantiated::new($arg, &$crate::consts::DISPLAY)
+        $crate::Instantiated::new($arg, $crate::Display)
     };
     ($arg:expr=>?) => {
-        $crate::Instantiated::new($arg, &$crate::consts::DEBUG)
+        $crate::Instantiated::new($arg, $crate::Debug)
     };
     ($arg:expr=>{$strategy:expr}) => {
         $crate::Instantiated::new($arg, $strategy)
@@ -20,10 +20,10 @@ macro_rules! fwrite {
             $( let chain = chain.chain(fast_fmt_instantiate!($args)); )*
 
             if $crate::Write::uses_size_hint($writer) {
-                $crate::Write::size_hint($writer, chain.size_hint(&$crate::consts::DISPLAY));
+                $crate::Write::size_hint($writer, chain.size_hint($crate::Display));
             }
 
-            chain.fmt($writer, &$crate::consts::DISPLAY)
+            chain.fmt($writer, $crate::Display)
         }
     };
 }
